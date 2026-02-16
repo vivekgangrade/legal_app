@@ -1,0 +1,64 @@
+name: Legal App CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest flake8
+
+    - name: Lint with flake8
+      working-directory: ./backend
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with pytest
+      working-directory: ./backend
+      run: |
+        pytest
+
+  docker-build-push:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build Backend Docker image
+      run: docker build ./backend --file ./backend/Dockerfile --tag legal-app-backend:$(date +%s)
+
+    # Note: Pushing to Docker Hub requires secrets.
+    # Uncomment and configure secrets to enable pushing.
+    # - name: Log in to Docker Hub
+    #   uses: docker/login-action@v2
+    #   with:
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    # - name: Push Docker image
+    #   run: |
+    #     IMAGE_TAG=legal-app-backend:$(date +%s)
+    #     docker tag $IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
+    #     docker tag $IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legal-app-deployment
+  labels:
+    app: legal-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: legal-app
+  template:
+    metadata:
+      labels:
+        app: legal-app
+    spec:
+      containers:
+      - name: legal-app
+        image: legal-app:latest # Replace with your actual registry image
+        imagePullPolicy: IfNotPresent # Use Always for production with registry
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENV_VAR_EXAMPLE
+          value: "production_value"
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 20
