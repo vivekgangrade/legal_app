@@ -1,4 +1,5 @@
 # Legal Case Management Web Application
+[GitHub Repository](https://github.com/vivekgangrade/legal_app)
 
 A production-ready Full Stack Legal Case Management system, built with FastAPI (Backend), React (Frontend), Docker, and Kubernetes.
 
