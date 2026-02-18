@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -14,6 +14,8 @@ class CaseBase(BaseModel):
     client_name: str
     status: CaseStatus = CaseStatus.OPEN
 
+    model_config = ConfigDict(use_enum_values=True)
+
 class CaseCreate(CaseBase):
     pass
 
@@ -28,8 +30,7 @@ class Case(CaseBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 class UserBase(BaseModel):
     username: str
@@ -43,5 +44,4 @@ class User(UserBase):
     id: int
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

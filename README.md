@@ -10,7 +10,7 @@ legal_app/
 ├── backend/                # Python FastAPI Backend
 │   ├── app/                # Application Source Code
 │   │   ├── main.py         # Entry point
-│   │   ├── models.py       # Data models (Mock DB)
+│   │   ├── models.py       # Data models (SQLAlchemy)
 │   │   ├── routers/        # API routes
 │   │   └── utils/          # Utilities
 │   ├── Dockerfile          # Backend Docker Build
@@ -32,6 +32,7 @@ legal_app/
     - `POST /cases`: Create a new legal case.
     - `GET /cases`: List all cases.
     - `POST /users/token`: Authentication (User: `admin`, Pass: `password`).
+    - Connects to PostgreSQL database.
 - **React Frontend**: Modern UI with Dashboard and Case Management.
 - **Dockerized**: 
     - `backend/Dockerfile`: Builds the Python API.
