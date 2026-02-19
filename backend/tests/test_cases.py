@@ -1,41 +1,4 @@
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import Base, get_db
-
-# Setup in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-def setup_module(module):
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-
-def teardown_module(module):
-    # Drop tables
-    Base.metadata.drop_all(bind=engine)
-
-def test_create_case():
+def test_create_case(client):
     response = client.post(
         "/cases/",
         json={"title": "Test Case", "client_name": "John Doe", "status": "open"}
@@ -46,12 +9,12 @@ def test_create_case():
     assert "id" in data
     assert data["status"] == "open"
 
-def test_read_cases():
+def test_read_cases(client):
     response = client.get("/cases/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-def test_read_case_by_id():
+def test_read_case_by_id(client):
     # Create a case first
     create_response = client.post(
         "/cases/",
@@ -63,7 +26,7 @@ def test_read_case_by_id():
     assert response.status_code == 200
     assert response.json()["title"] == "Lookup Case"
 
-def test_update_case():
+def test_update_case(client):
     # Create a case first
     create_response = client.post(
         "/cases/",
@@ -78,7 +41,7 @@ def test_update_case():
     assert response.status_code == 200
     assert response.json()["title"] == "New Title"
 
-def test_delete_case():
+def test_delete_case(client):
     # Create a case first
     create_response = client.post(
         "/cases/",

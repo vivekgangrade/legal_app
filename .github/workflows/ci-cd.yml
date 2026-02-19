@@ -37,15 +37,36 @@ jobs:
       run: |
         pytest
 
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Build
+      working-directory: ./frontend
+      run: npm run build
+
   docker-build-push:
-    needs: build-and-test
+    needs: [build-and-test, build-frontend]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build Backend Docker image
       run: docker build ./backend --file ./backend/Dockerfile --tag legal-app-backend:$(date +%s)
+
+    - name: Build Frontend Docker image
+      run: docker build ./frontend --file ./frontend/Dockerfile --tag legal-app-frontend:$(date +%s)
 
     # Note: Pushing to Docker Hub requires secrets.
     # Uncomment and configure secrets to enable pushing.
@@ -55,10 +76,16 @@ jobs:
     #     username: ${{ secrets.DOCKER_USERNAME }}
     #     password: ${{ secrets.DOCKER_PASSWORD }}
     
-    # - name: Push Docker image
+    # - name: Push Docker images
     #   run: |
-    #     IMAGE_TAG=legal-app-backend:$(date +%s)
-    #     docker tag $IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
+    #     IMAGE_TAG=$(date +%s)
+    #     # Backend
+    #     docker tag legal-app-backend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
     #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
-    #     docker tag $IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
+    #     docker tag legal-app-backend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
     #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
+    #     # Frontend
+    #     docker tag legal-app-frontend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:$IMAGE_TAG
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:$IMAGE_TAG
+    #     docker tag legal-app-frontend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:latest
+    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:latest
