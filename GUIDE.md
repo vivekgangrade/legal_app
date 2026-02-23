@@ -58,6 +58,5 @@ pytest
 If you have Docker installed, you can run the app in a container:
 
 ```bash
-docker build -t legal-app .
-docker run -p 8000:8000 legal-app
+docker compose up --build
 ```
