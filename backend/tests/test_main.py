@@ -1,7 +1,11 @@
+"""Tests for root and health endpoints."""
+
+
 def test_read_main(client):
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {"message": "Welcome to the Legal Case Management API"}
+
 
 def test_health_check(client):
     response = client.get("/health")

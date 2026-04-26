@@ -2,61 +2,42 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.routers import cases, users
 from app.utils.logger import logger
-from app.database import engine, Base, SessionLocal
-from app.models import User
-import time
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session
+from app.utils.auth import hash_password
+from app.database import users_collection, get_next_id
 from fastapi.middleware.cors import CORSMiddleware
 
-MAX_RETRIES = 10
-RETRY_DELAY = 3 # seconds
-
-def create_tables():
-    for i in range(MAX_RETRIES):
-        try:
-            Base.metadata.create_all(bind=engine)
-            logger.info("Database tables created successfully.")
-            return
-        except OperationalError as e:
-            if i == MAX_RETRIES - 1:
-                logger.error(f"Could not connect to database after {MAX_RETRIES} attempts: {e}")
-                raise e
-            logger.warning(f"Database not ready, retrying in {RETRY_DELAY}s... ({i+1}/{MAX_RETRIES})")
-            time.sleep(RETRY_DELAY)
 
 def seed_db():
-    db = SessionLocal()
+    """Create default admin user if it doesn't exist."""
     try:
-        user = db.query(User).filter(User.username == "admin").first()
+        user = users_collection.find_one({"username": "admin"})
         if not user:
-            # TODO: In production, use a proper password hashing library like passlib
-            # context.verify(password, hashed_password)
-            admin_user = User(
-                username="admin",
-                email="admin@example.com",
-                full_name="Admin User",
-                password="password" 
-            )
-            db.add(admin_user)
-            db.commit()
+            user_doc = {
+                "id": get_next_id("users"),
+                "username": "admin",
+                "email": "admin@example.com",
+                "full_name": "Admin User",
+                "password": hash_password("password"),
+                "is_active": True,
+            }
+            users_collection.insert_one(user_doc)
             logger.info("Created default admin user")
         else:
             logger.info("Admin user already exists")
     except Exception as e:
         logger.error(f"Error seeding DB: {e}")
-    finally:
-        db.close()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Create tables and seed DB
+    # Startup: Seed default data
     logger.info("Starting up...")
-    create_tables()
     seed_db()
+    logger.info("MongoDB connected and seeded successfully.")
     yield
     # Shutdown
     logger.info("Shutting down...")
+
 
 app = FastAPI(
     title="Legal Case Management API",
@@ -69,6 +50,8 @@ origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
@@ -82,10 +65,12 @@ app.add_middleware(
 app.include_router(cases.router)
 app.include_router(users.router)
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     logger.info("Health check endpoint called")
     return {"status": "healthy"}
+
 
 @app.get("/", tags=["Root"])
 async def root():

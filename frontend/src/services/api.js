@@ -49,8 +49,23 @@ export const getCases = async () => {
     return response.data;
 };
 
+export const getCase = async (caseId) => {
+    const response = await api.get(`/cases/${caseId}`);
+    return response.data;
+};
+
 export const createCase = async (caseData) => {
     const response = await api.post('/cases', caseData);
+    return response.data;
+};
+
+export const updateCase = async (caseId, caseData) => {
+    const response = await api.put(`/cases/${caseId}`, caseData);
+    return response.data;
+};
+
+export const deleteCase = async (caseId) => {
+    const response = await api.delete(`/cases/${caseId}`);
     return response.data;
 };
 

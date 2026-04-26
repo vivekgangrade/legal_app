@@ -1,30 +1,34 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Boolean
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.database import Base
-from app.schemas import CaseStatus # Import Enum from schemas to match Pydantic
+# MongoDB is schemaless - we don't need SQLAlchemy models.
+# All schema validation is handled by Pydantic models in schemas.py.
+# This file is kept for reference of the document structure.
 
-class User(Base):
-    __tablename__ = "users"
+"""
+MongoDB Document Structures:
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    full_name = Column(String)
-    password = Column(String) # Hashed password
-    is_active = Column(Boolean, default=True)
+users collection:
+{
+    "id": int (auto-increment),
+    "username": str,
+    "email": str,
+    "full_name": str | None,
+    "password": str,
+    "is_active": bool (default True)
+}
 
-class Case(Base):
-    __tablename__ = "cases"
+cases collection:
+{
+    "id": int (auto-increment),
+    "title": str,
+    "description": str | None,
+    "client_name": str,
+    "status": "open" | "closed" | "pending",
+    "created_at": datetime,
+    "updated_at": datetime
+}
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    description = Column(String, nullable=True)
-    client_name = Column(String)
-    status = Column(Enum(CaseStatus), default=CaseStatus.OPEN)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # If we want to link cases to users later:
-    # owner_id = Column(Integer, ForeignKey("users.id"))
-    # owner = relationship("User", back_populates="cases")
+counters collection (for auto-increment IDs):
+{
+    "_id": str (collection name),
+    "seq": int
+}
+"""

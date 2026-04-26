@@ -1,54 +1,58 @@
+"""Test configuration for the Legal Case Management API.
+
+Uses mongomock to mock MongoDB collections so tests run
+without a real database connection.
+"""
+
 import pytest
 from unittest import mock
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.main import app
-from app.database import Base, get_db
+# Patch pymongo with mongomock BEFORE importing app modules
+import mongomock
 
-# Setup in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+mock_client = mongomock.MongoClient()
+mock_db = mock_client["test_legal_db"]
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-@pytest.fixture(scope="module")
-def db_engine():
-    Base.metadata.create_all(bind=engine)
-    yield engine
-    Base.metadata.drop_all(bind=engine)
+def _mock_get_next_id(collection_name: str) -> int:
+    """Auto-increment helper for the mocked database."""
+    counter = mock_db["counters"].find_one_and_update(
+        {"_id": collection_name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    return counter["seq"]
 
-@pytest.fixture(scope="function")
-def db(db_engine):
-    connection = db_engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
 
-@pytest.fixture(scope="module", autouse=True)
-def mock_startup():
-    with  mock.patch("app.main.create_tables"), \
-          mock.patch("app.main.seed_db"):
-        yield
+# Patch the database module's collections and helpers
+_patches = [
+    mock.patch("app.database.client", mock_client),
+    mock.patch("app.database.db", mock_db),
+    mock.patch("app.database.cases_collection", mock_db["cases"]),
+    mock.patch("app.database.users_collection", mock_db["users"]),
+    mock.patch("app.database.counters_collection", mock_db["counters"]),
+    mock.patch("app.database.get_next_id", _mock_get_next_id),
+]
 
-@pytest.fixture(scope="function")
-def client(db):
-    def override_get_db():
-        try:
-            yield db
-        finally:
-            pass
-    
-    app.dependency_overrides[get_db] = override_get_db
+for p in _patches:
+    p.start()
+
+from app.main import app  # noqa: E402 — must import after patches
+
+
+@pytest.fixture(autouse=True)
+def clean_db():
+    """Drop all test collections before each test for isolation."""
+    mock_db["cases"].delete_many({})
+    mock_db["users"].delete_many({})
+    mock_db["counters"].delete_many({})
+    yield
+
+
+@pytest.fixture()
+def client():
+    """Provide a FastAPI TestClient."""
     with TestClient(app) as c:
         yield c
-    app.dependency_overrides.clear()

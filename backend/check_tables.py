@@ -1,12 +1,18 @@
-from sqlalchemy import create_engine, inspect
-import os
+"""
+Simple script to check MongoDB collections and their document counts.
+"""
+from pymongo import MongoClient
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@db:5432/legal_db")
-engine = create_engine(DATABASE_URL)
+client = MongoClient("mongodb://localhost:27017")
+db = client["legal_db"]
 
-try:
-    inspector = inspect(engine)
-    tables = inspector.get_table_names()
-    print(f"Tables found: {tables}")
-except Exception as e:
-    print(f"Error connecting: {e}")
+print("Collections in legal_db:")
+for name in db.list_collection_names():
+    count = db[name].count_documents({})
+    print(f"  - {name}: {count} documents")
+    
+    # Show sample document
+    sample = db[name].find_one()
+    if sample:
+        sample.pop("_id", None)
+        print(f"    Sample: {sample}")

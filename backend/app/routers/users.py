@@ -1,9 +1,14 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from app.schemas import User as UserSchema, UserCreate
-from app.models import User
-from app.database import get_db
+from app.schemas import UserResponse, UserCreate
+from app.database import users_collection, get_next_id
+from app.utils.logger import logger
+from app.utils.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+)
 
 router = APIRouter(
     prefix="/users",
@@ -12,34 +17,70 @@ router = APIRouter(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
 
-@router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.username == user.username).first()
+
+def user_doc_to_response(doc: dict) -> dict:
+    """Convert MongoDB document to response format (strip _id and password)."""
+    doc.pop("_id", None)
+    doc.pop("password", None)
+    return doc
+
+
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(user: UserCreate):
+    db_user = users_collection.find_one({"username": user.username})
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    
-    new_user = User(
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        password=user.password # In production, hash this!
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+
+    user_doc = {
+        "id": get_next_id("users"),
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "password": hash_password(user.password),
+        "is_active": True,
+    }
+    users_collection.insert_one(user_doc)
+    return user_doc_to_response(user_doc)
+
 
 @router.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or user.password != form_data.password:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    
-    return {"access_token": user.username, "token_type": "bearer"}
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = users_collection.find_one({"username": form_data.username})
+    if not user or not verify_password(form_data.password, user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-@router.get("/me", response_model=UserSchema)
-async def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == token).first()
+    access_token = create_access_token(data={"sub": user["username"]})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Dependency: decode JWT and return the current user document."""
+    payload = decode_access_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    user = users_collection.find_one({"username": username})
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
     return user
+
+
+@router.get("/me", response_model=UserResponse)
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    return user_doc_to_response(current_user)
