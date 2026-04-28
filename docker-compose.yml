@@ -1,0 +1,79 @@
+# ============================================================
+# docker-compose.yml — Local Development Setup
+# ============================================================
+# Usage:
+#   docker-compose up              # start all services
+#   docker-compose up -d           # start in background
+#   docker-compose down            # stop all services
+#   docker-compose logs -f app     # tail app logs
+#
+# This file is for LOCAL DEVELOPMENT.
+# For production, use: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# ============================================================
+
+services:
+
+  # ── Main Application ─────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legal-ai-app
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-10000}:10000"
+
+    # Pass environment variables from .env file
+    env_file:
+      - .env
+
+    environment:
+      - APP_ENV=development
+      - PORT=10000
+
+    volumes:
+      # Persist generated PDF reports
+      - app-outputs:/app/outputs
+      # Persist log files
+      - app-logs:/app/logs
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:10000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits (prevent OOM on small instances)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ── Redis (Optional — for future caching) ────────────────
+  # Uncomment when you want to add response caching.
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: legal-ai-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+
+# ── Named Volumes ──────────────────────────────────────────
+volumes:
+  app-outputs:
+    driver: local
+  app-logs:
+    driver: local
+  # redis-data:
+  #   driver: local
