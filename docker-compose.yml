@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ============================================================
 # docker-compose.yml — Local Development Setup
 # ============================================================
@@ -77,3 +78,47 @@ volumes:
     driver: local
   # redis-data:
   #   driver: local
+=======
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - ENVIRONMENT=development
+      - MONGO_URL=mongodb://db:27017
+      - DB_NAME=legal_db
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  db:
+    image: mongo:7
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
+>>>>>>> 0be617d20256d6634f88d373d4bd7e451672cf23

@@ -1,0 +1,48 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\VIVEk\Desktop\legal_app\backend
+plugins: anyio-4.12.1
+collected 5 items
+
+tests\test_cases.py F....                                                [100%]
+
+================================== FAILURES ===================================
+______________________________ test_create_case _______________________________
+
+    def test_create_case():
+        response = client.post(
+            "/cases/",
+            json={"title": "Test Case", "client_name": "John Doe", "status": "OPEN"}
+        )
+>       assert response.status_code == 201
+E       assert 422 == 201
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+tests\test_cases.py:43: AssertionError
+============================== warnings summary ===============================
+app\schemas.py:26
+  C:\Users\VIVEk\Desktop\legal_app\backend\app\schemas.py:26: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class Case(CaseBase):
+
+app\schemas.py:42
+  C:\Users\VIVEk\Desktop\legal_app\backend\app\schemas.py:42: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class User(UserBase):
+
+app\database.py:12
+  C:\Users\VIVEk\Desktop\legal_app\backend\app\database.py:12: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+tests/test_cases.py::test_read_case_by_id
+tests/test_cases.py::test_read_case_by_id
+tests/test_cases.py::test_update_case
+tests/test_cases.py::test_update_case
+tests/test_cases.py::test_update_case
+tests/test_cases.py::test_delete_case
+tests/test_cases.py::test_delete_case
+  C:\Users\VIVEk\Desktop\legal_app\backend\venv\Lib\site-packages\sqlalchemy\sql\schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_cases.py::test_create_case - assert 422 == 201
+================== 1 failed, 4 passed, 10 warnings in 1.24s ===================
