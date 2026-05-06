@@ -5,6 +5,7 @@ from app.utils.logger import logger
 from app.utils.auth import hash_password
 from app.database import users_collection, get_next_id
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 
 def seed_db():
@@ -53,6 +54,11 @@ origins = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
 ]
+
+# Add production frontend URL from environment
+frontend_url = os.environ.get("FRONTEND_URL", "")
+if frontend_url:
+    origins.append(frontend_url.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,

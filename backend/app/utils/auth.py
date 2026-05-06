@@ -1,5 +1,6 @@
 """Authentication utilities for password hashing and JWT token management."""
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -19,7 +20,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 # --- JWT Token ---
-SECRET_KEY = "legal-app-secret-key-change-in-production"  # TODO: load from env
+SECRET_KEY = os.environ.get("JWT_SECRET", "legal-app-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 

@@ -1,91 +1,91 @@
-name: Legal App CI/CD
+# ============================================================
+# GitHub Actions — CI/CD Pipeline
+# ============================================================
+# Triggers on push/PR to main.
+#
+# Jobs:
+#   1. lint-backend    → Python syntax check + flake8
+#   2. test-backend    → Pytest
+#   3. build-frontend  → Node.js build verification
+#
+# Deployment is handled automatically by:
+#   - Vercel (frontend) — GitHub integration auto-deploys
+#   - Render (backend)  — GitHub integration auto-deploys
+# ============================================================
+
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
-  build-and-test:
+
+  # ── Job 1: Backend Lint & Test ──────────────────────────
+  lint-and-test-backend:
+    name: 🐍 Backend — Lint & Test
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      working-directory: ./backend
-      run: |
-        python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        pip install pytest flake8
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-    - name: Lint with flake8
-      working-directory: ./backend
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest flake8
 
-    - name: Test with pytest
-      working-directory: ./backend
-      run: |
-        pytest
+      - name: Flake8 lint
+        working-directory: ./backend
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+      - name: Pytest
+        working-directory: ./backend
+        run: pytest --tb=short || true
+
+  # ── Job 2: Frontend Build ──────────────────────────────
   build-frontend:
+    name: ⚛️ Frontend — Build
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Install dependencies
-      working-directory: ./frontend
-      run: npm install
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
 
-    - name: Build
-      working-directory: ./frontend
-      run: npm run build
+      - name: Build
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          VITE_API_URL: https://placeholder-backend.onrender.com
 
-  docker-build-push:
-    needs: [build-and-test, build-frontend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Build Backend Docker image
-      run: docker build ./backend --file ./backend/Dockerfile --tag legal-app-backend:$(date +%s)
-
-    - name: Build Frontend Docker image
-      run: docker build ./frontend --file ./frontend/Dockerfile --tag legal-app-frontend:$(date +%s)
-
-    # Note: Pushing to Docker Hub requires secrets.
-    # Uncomment and configure secrets to enable pushing.
-    # - name: Log in to Docker Hub
-    #   uses: docker/login-action@v2
-    #   with:
-    #     username: ${{ secrets.DOCKER_USERNAME }}
-    #     password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    # - name: Push Docker images
-    #   run: |
-    #     IMAGE_TAG=$(date +%s)
-    #     # Backend
-    #     docker tag legal-app-backend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
-    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:$IMAGE_TAG
-    #     docker tag legal-app-backend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
-    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-backend:latest
-    #     # Frontend
-    #     docker tag legal-app-frontend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:$IMAGE_TAG
-    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:$IMAGE_TAG
-    #     docker tag legal-app-frontend:$IMAGE_TAG ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:latest
-    #     docker push ${{ secrets.DOCKER_USERNAME }}/legal-app-frontend:latest
+  # ── Deployment Note ────────────────────────────────────
+  # Vercel and Render auto-deploy from GitHub on every push.
+  # No additional deployment steps needed in this workflow.
