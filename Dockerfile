@@ -28,8 +28,7 @@ RUN apt-get update && \
 
 # Copy only requirements first (layer caching — rebuilds only when deps change)
 COPY requirements.txt .
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
 # ── Stage 2: Production image ────────────────────────────────
@@ -67,8 +66,8 @@ COPY --chown=appuser:appuser . .
 # Pre-download the embedding model at build time
 # This avoids a slow first-request download at runtime
 RUN python -c "\
-from sentence_transformers import SentenceTransformer; \
-SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')" \
+from fastembed import TextEmbedding; \
+TextEmbedding('BAAI/bge-small-en-v1.5')" \
     2>/dev/null || echo "Model pre-download skipped (no network)"
 
 # Make startup script executable

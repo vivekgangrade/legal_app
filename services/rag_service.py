@@ -20,7 +20,7 @@ Workflow:
 import logging
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from config import (
@@ -38,12 +38,12 @@ logger = logging.getLogger(__name__)
 _embeddings = None
 
 
-def _get_embeddings() -> HuggingFaceEmbeddings:
+def _get_embeddings() -> FastEmbedEmbeddings:
     """Lazy-initialize the embedding model (downloads on first use)."""
     global _embeddings
     if _embeddings is None:
-        logger.info("⏳ Loading embedding model: %s ...", EMBEDDING_MODEL_NAME)
-        _embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+        logger.info("⏳ Loading embedding model: BAAI/bge-small-en-v1.5 ...")
+        _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
         logger.info("✅ Embedding model loaded")
     return _embeddings
 

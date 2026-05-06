@@ -13,7 +13,7 @@ langchain-groq>=0.1.0
 langchain-text-splitters>=0.2.0
 
 # ── Embeddings & Vector Store ──
-sentence-transformers>=2.2.0
+fastembed>=0.2.0
 faiss-cpu>=1.7.0
 
 # ── PDF Processing ──
