@@ -1,22 +1,21 @@
-# Render Blueprint — Backend Deployment
+# Render Blueprint — Legal AI Platform Deployment
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
-    name: legal-app-backend
+    name: legal-ai-platform
     runtime: python
     region: oregon
     plan: free
-    rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "python app.py"
     envVars:
-      - key: MONGO_URL
+      - key: GROQ_API_KEY
         sync: false
-      - key: DB_NAME
-        value: legal_db
-      - key: JWT_SECRET
-        generateValue: true
-      - key: FRONTEND_URL
+      - key: TAVILY_API_KEY
         sync: false
+      - key: PORT
+        value: "10000"
+      - key: APP_ENV
+        value: "production"
       - key: PYTHON_VERSION
         value: "3.11.0"
