@@ -28,7 +28,8 @@ RUN apt-get update && \
 
 # Copy only requirements first (layer caching — rebuilds only when deps change)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 
 # ── Stage 2: Production image ────────────────────────────────
